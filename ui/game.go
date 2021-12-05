@@ -42,6 +42,9 @@ func (ui *GridUI) Draw(screen *ebiten.Image) {
 // size.
 func (ui *GridUI) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
 	ui.imW, ui.imH = outsideWidth, outsideHeight
+	// remainderX := ui.imW - ui.Columns*(ui.imW/ui.Columns)
+	// remainderY := ui.imH - ui.Lines*(ui.imH/ui.Lines)
+	return ui.Columns * 100, ui.Lines * 100
 	return outsideWidth, outsideHeight
 }
 
@@ -52,13 +55,27 @@ func (ui *GridUI) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHe
 //  // 0  1  2  3
 //  // 4  5  6  7
 //  // 8  9 10 11
+// FIXME: width or height divides by columns or lines is not always a whole number
+// the remainder can be up to numcols-1 / numlines-1, and must be distributed
+// evenly accross columns / lines
+// Warning, if you increase size of a cell, the next cell will have an offset, too
 func (ui *GridUI) CellAt(screen *ebiten.Image, i int) *ebiten.Image {
 	lin, col := gridPos(i, ui.Lines, ui.Columns)
-	colWidth := ui.imW / ui.Columns
-	linWidth := ui.imH / ui.Lines
+
+	// remainderX := ui.imW - ui.Columns*(ui.imW/ui.Columns)
+	// remainderY := ui.imH - ui.Lines*(ui.imH/ui.Lines)
+	// adjX := remainderX
+	// adjY := remainderY
+	// adjX = 0
+	// adjY = 0
+
+	cellWidth := ui.imW / ui.Columns
+	cellHeight := ui.imH / ui.Lines
+	cellWidth = 100
+	cellHeight = 100
 	crop := image.Rectangle{
-		Min: image.Point{X: col * colWidth, Y: lin * linWidth},
-		Max: image.Point{X: (col + 1) * colWidth, Y: (lin + 1) * linWidth},
+		Min: image.Point{X: col * cellWidth, Y: lin * cellHeight},
+		Max: image.Point{X: (col + 1) * cellWidth, Y: (lin + 1) * cellHeight},
 	}
 	// log.Debug().
 	// 	Int(`colWidth`, colWidth).
