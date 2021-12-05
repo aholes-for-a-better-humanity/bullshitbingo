@@ -2,13 +2,11 @@ package ui
 
 import (
 	"image/color"
-	"math/rand"
-	"time"
 )
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(Colors), func(i, j int) { Colors[i], Colors[j] = Colors[j], Colors[i] })
+	// rand.Seed(time.Now().UnixNano())
+	// rand.Shuffle(len(Colors), func(i, j int) { Colors[i], Colors[j] = Colors[j], Colors[i] })
 }
 
 var Colors []color.RGBA = []color.RGBA{

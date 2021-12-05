@@ -1,6 +1,7 @@
 package widgets
 
 import (
+	_ "embed"
 	"image"
 	"image/color"
 
@@ -8,24 +9,26 @@ import (
 
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/ui"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/text"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
 )
+
+//go:embed Lato-Regular.ttf
+var myfont []byte
 
 var (
 	fontsL []font.Face
 )
 
 func init() {
-	tt, err := opentype.Parse(fonts.MPlus1pRegular_ttf)
+	tt, err := opentype.Parse(myfont)
 	if err != nil {
 		log.Fatal().Err(err).Msg(``)
 	}
 	const dpi = 72
 	var fsizes []float64
-	for i := 100.00; i > 0; i -= 4.0 {
+	for i := 100.00; i > 0; i -= 2.0 {
 		fsizes = append(fsizes, i)
 	}
 	fontsL = make([]font.Face, len(fsizes))
@@ -34,7 +37,7 @@ func init() {
 		fontsL[i], err = opentype.NewFace(tt, &opentype.FaceOptions{
 			Size:    fsize,
 			DPI:     dpi,
-			Hinting: font.HintingFull,
+			Hinting: font.HintingNone,
 		})
 		if err != nil {
 			log.Fatal().Err(err).Msg(``)
@@ -73,9 +76,14 @@ func (t *Text) Draw(screen *ebiten.Image) {
 			break
 		}
 	}
+	// ebitenutil.DrawRect(screen,
+	// 	float64(screen.Bounds().Min.X+(screen.Bounds().Dx()-textDims.Dx())/2),
+	// 	float64(screen.Bounds().Min.Y+(screen.Bounds().Dy()-textDims.Dy())/2),
+	// 	float64(textDims.Dx()), float64(textDims.Dy()), color.RGBA{0, 0, 0, 0xFF})
 	text.Draw(screen, t.Msg, fontFace,
-		screen.Bounds().Min.X+screen.Bounds().Dx()/2-textDims.Dx()/2,
-		screen.Bounds().Min.Y+screen.Bounds().Dy()/2+textDims.Dy()/2, // origin is on the text baseline (bottom of letters)
+		screen.Bounds().Min.X+(screen.Bounds().Dx()-textDims.Dx())/2,
+		screen.Bounds().Min.Y+(screen.Bounds().Dy()+textDims.Dy())/2, // origin is on the text baseline (bottom of letters)
 		color.White)
+
 	//log.Debug().Str(`txt`, t.Msg).Msg(`drawn`)
 }
