@@ -25,7 +25,7 @@ func init() {
 	}
 	const dpi = 72
 	var fsizes []float64
-	for i := 100.00; i > 0; i -= 0.25 {
+	for i := 100.00; i > 0; i -= 4.0 {
 		fsizes = append(fsizes, i)
 	}
 	fontsL = make([]font.Face, len(fsizes))
@@ -50,6 +50,14 @@ type Text struct {
 	Bckgrd color.RGBA
 	Pad    int // pixel value f the padding in p
 	Fsize  float64
+	bboxL  []image.Rectangle
+}
+
+func (t *Text) PreloadBbox() {
+	t.bboxL = make([]image.Rectangle, len(fontsL))
+	for i := 0; i < len(fontsL); i++ {
+		t.bboxL[i] = text.BoundString(fontsL[i], t.Msg)
+	}
 }
 
 func (t *Text) Update() error { return nil }
@@ -59,7 +67,8 @@ func (t *Text) Draw(screen *ebiten.Image) {
 	var fontFace font.Face
 	for i := 0; i < len(fontsL); i++ {
 		fontFace = fontsL[i]
-		textDims = text.BoundString(fontFace, t.Msg)
+		textDims = t.bboxL[i]
+		// textDims = text.BoundString(fontFace, t.Msg)
 		if textDims.Dx() < screen.Bounds().Dx()-t.Pad*2 && textDims.Dy() < screen.Bounds().Dy()-t.Pad*2 {
 			break
 		}
