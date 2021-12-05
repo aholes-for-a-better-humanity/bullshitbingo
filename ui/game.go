@@ -68,10 +68,14 @@ func (ui *GridUI) CellAt(screen *ebiten.Image, i int) *ebiten.Image {
 	if col < remainderX {
 		adjW = 1
 		adjX = col
+	} else {
+		adjX = remainderX
 	}
 	if lin < remainderY {
 		adjH = 1
 		adjY = lin
+	} else {
+		adjY = remainderY
 	}
 
 	cellWidth := ui.imW / ui.Columns
