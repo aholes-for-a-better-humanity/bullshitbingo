@@ -24,7 +24,7 @@ func init() {
 }
 
 func main() {
-	err := ebiten.RunGame(&ui.GridUI{
+	UI := &ui.GridUI{
 		Columns: 2,
 		Lines:   2,
 		Widgets: []ui.Widget{
@@ -33,7 +33,9 @@ func main() {
 			&widgets.Text{Msg: `bin`, Bckgrd: color.RGBA{0xff, 0x7f, 0x3f, 0xae}},
 			&widgets.Text{Msg: `Go`, Bckgrd: color.RGBA{0x7f, 0x7f, 0x7f, 0xae}},
 		},
-	})
+	}
+	go runBBGame(UI)
+	err := ebiten.RunGame(UI)
 	if err != nil {
 		log.Fatal().Err(err).Msg(`exiting`)
 	}
