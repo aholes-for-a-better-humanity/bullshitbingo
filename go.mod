@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/hajimehoshi/ebiten/v2 v2.2.2
+	github.com/matryer/is v1.4.0
 	github.com/rs/zerolog v1.26.0
 )
 
