@@ -31,7 +31,6 @@ var Colors []color.RGBA = []color.RGBA{
 	{255, 215, 0, 0xFF},   // gold    #FFD700
 	{184, 134, 11, 0xFF},  // dark golden rod    #B8860B
 	{218, 165, 32, 0xFF},  // golden rod     #DAA520
-	{238, 232, 170, 0xFF}, // pale golden rod   #EEE8AA
 	{189, 183, 107, 0xFF}, // dark khaki    #BDB76B
 	{240, 230, 140, 0xFF}, // khaki     #F0E68C
 	{128, 128, 0, 0xFF},   // olive   #808000
