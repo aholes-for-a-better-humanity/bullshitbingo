@@ -5,6 +5,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/rs/zerolog/log"
 )
 
 var _ ebiten.Game = &GridUI{}
@@ -57,14 +58,20 @@ func (ui *GridUI) CellAt(screen *ebiten.Image, i int) *ebiten.Image {
 	linWidth := ui.imH / ui.Lines
 	crop := image.Rectangle{
 		Min: image.Point{X: col * colWidth, Y: lin * linWidth},
-		Max: image.Point{X: col*(colWidth+1) - 1, Y: lin*(linWidth+1) - 1},
+		Max: image.Point{X: (col + 1) * colWidth, Y: (lin + 1) * linWidth},
 	}
+	// log.Debug().
+	// 	Int(`colWidth`, colWidth).
+	// 	Int(`linWidth`, linWidth).
+	// 	Interface(`Min`, crop.Min).
+	// 	Interface(`Max`, crop.Max).Msg(``)
 	return screen.SubImage(crop).(*ebiten.Image)
 }
 
 // gridPos returns the position of a cell by its number.
 func gridPos(index, lines, cols int) (lin, col int) {
 	if index >= lines*cols || cols == 0 {
+		log.Warn().Msg(`out of bonds`)
 		return -1, -1
 	}
 	return index / cols, index % cols

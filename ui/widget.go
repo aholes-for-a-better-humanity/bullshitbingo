@@ -6,4 +6,7 @@ import "github.com/hajimehoshi/ebiten/v2"
 //
 // Combined together, they allow building more complex UIs,
 // using simple building blocks.
-type Widget = ebiten.Game
+type Widget interface {
+	Update() error
+	Draw(screen *ebiten.Image)
+}
