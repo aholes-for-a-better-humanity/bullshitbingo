@@ -18,7 +18,9 @@ func Hydrate(UI *ui.GridUI) {
 
 	UI.Widgets = make([]ui.Widget, UI.Columns*UI.Lines)
 	for i := 0; i < len(UI.Widgets); i++ {
-		UI.Widgets[i] = &widgets.Text{Msg: words[i], Pad: 4,Bckgrd: ui.Colors[i%len(ui.Colors)]}
+		UI.Widgets[i] = &widgets.Text{Msg: words[i], Pad: 8, Bckgrd: ui.Colors[i%len(ui.Colors)]}
 		UI.Widgets[i].PreloadBbox()
 	}
+	UI.Widgets[12].(*widgets.Text).Msg = "."
+	UI.Widgets[12].PreloadBbox()
 }
