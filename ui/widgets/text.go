@@ -9,6 +9,8 @@ import (
 
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/ui"
 	"github.com/hajimehoshi/ebiten/v2"
+
+	// "github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/text"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
@@ -82,7 +84,8 @@ func (t *Text) Draw(screen *ebiten.Image) {
 	// 	float64(textDims.Dx()), float64(textDims.Dy()), color.RGBA{0, 0, 0, 0xFF})
 	text.Draw(screen, t.Msg, fontFace,
 		screen.Bounds().Min.X+(screen.Bounds().Dx()-textDims.Dx())/2-textDims.Min.X,
-		screen.Bounds().Min.Y+(screen.Bounds().Dy()-textDims.Dy())/2-textDims.Min.Y,
+		screen.Bounds().Min.Y+(screen.Bounds().Dy()+textDims.Dy())/2, // Align baselines
+		// screen.Bounds().Min.Y+(screen.Bounds().Dy()-textDims.Dy())/2-textDims.Min.Y, // Exact geometrical center (ugly)
 		color.White) // textDims is at first character position, so pixels start at Min.X,Min.Y
 
 	//log.Debug().Str(`txt`, t.Msg).Msg(`drawn`)
