@@ -82,7 +82,7 @@ func (t *Text) Draw(screen *ebiten.Image) {
 	// 	float64(textDims.Dx()), float64(textDims.Dy()), color.RGBA{0, 0, 0, 0xFF})
 	text.Draw(screen, t.Msg, fontFace,
 		screen.Bounds().Min.X+(screen.Bounds().Dx()-textDims.Dx())/2-textDims.Min.X,
-		screen.Bounds().Min.Y+(screen.Bounds().Dy()+textDims.Dy())/2, // origin is on the text baseline (bottom of letters)
+		screen.Bounds().Min.Y+(screen.Bounds().Dy()-textDims.Dy())/2-textDims.Min.Y,
 		color.White)
 
 	//log.Debug().Str(`txt`, t.Msg).Msg(`drawn`)
