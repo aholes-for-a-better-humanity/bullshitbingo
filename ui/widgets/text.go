@@ -49,11 +49,11 @@ func init() {
 var _ ui.Widget = &Text{}
 
 type Text struct {
-	Msg    string
-	Bckgrd color.RGBA
-	Pad    int // pixel value f the padding in p
-	Fsize  float64
-	bboxL  []image.Rectangle
+	Msg     string
+	Bckgrd  color.RGBA
+	Padding int // pixel value f the padding in p
+	Fsize   float64
+	bboxL   []image.Rectangle
 }
 
 func (t *Text) Preload() {
@@ -72,7 +72,7 @@ func (t *Text) Draw(screen *ebiten.Image) {
 		fontFace = fontsL[i]
 		textDims = t.bboxL[i]
 		// textDims = text.BoundString(fontFace, t.Msg)
-		if textDims.Dx() < screen.Bounds().Dx()-t.Pad*2 && textDims.Dy() < screen.Bounds().Dy()-t.Pad*2 {
+		if textDims.Dx() < screen.Bounds().Dx()-t.Padding*2 && textDims.Dy() < screen.Bounds().Dy()-t.Padding*2 {
 			break
 		}
 	}
