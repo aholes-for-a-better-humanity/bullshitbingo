@@ -78,15 +78,19 @@ func (t *Text) Draw(screen *ebiten.Image) {
 			break
 		}
 	}
-	// ebitenutil.DrawRect(screen,
+	
+	// draws a bouding box of the text
+	// ebitenutil.DrawRect(screen, 
 	// 	float64(screen.Bounds().Min.X+(screen.Bounds().Dx()-textDims.Dx())/2),
 	// 	float64(screen.Bounds().Min.Y+(screen.Bounds().Dy()-textDims.Dy())/2),
 	// 	float64(textDims.Dx()), float64(textDims.Dy()), color.RGBA{0, 0, 0, 0xFF})
-	text.Draw(screen, t.Msg, fontFace,
-		screen.Bounds().Min.X+(screen.Bounds().Dx()-textDims.Dx())/2-textDims.Min.X,
-		screen.Bounds().Min.Y+(screen.Bounds().Dy()+textDims.Dy())/2, // Align baselines
-		// screen.Bounds().Min.Y+(screen.Bounds().Dy()-textDims.Dy())/2-textDims.Min.Y, // Exact geometrical center (ugly)
-		color.White) // textDims is at first character position, so pixels start at Min.X,Min.Y
 
-	//log.Debug().Str(`txt`, t.Msg).Msg(`drawn`)
-}
+	decal := struct{ X, Y int }{ // origin vector to place text in center
+		X: screen.Bounds().Min.X - textDims.Min.X,
+		Y: screen.Bounds().Min.Y, // Align baselines (do not correct vertically with textDims.Min.Y)
+	}
+	text.Draw(screen, t.Msg, fontFace,
+		decal.X+(screen.Bounds().Dx()-textDims.Dx())/2,
+		decal.Y+(screen.Bounds().Dy()+textDims.Dy())/2, 
+		color.White) // textDims is at first character position, so pixels start at Min.X,Min.Y
+	}
