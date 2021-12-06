@@ -9,5 +9,5 @@ import "github.com/hajimehoshi/ebiten/v2"
 type Widget interface {
 	Update() error
 	Draw(screen *ebiten.Image)
-	PreloadBbox()
+	Preload()
 }

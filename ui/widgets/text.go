@@ -56,7 +56,7 @@ type Text struct {
 	bboxL  []image.Rectangle
 }
 
-func (t *Text) PreloadBbox() {
+func (t *Text) Preload() {
 	t.bboxL = make([]image.Rectangle, len(fontsL))
 	for i := 0; i < len(fontsL); i++ {
 		t.bboxL[i] = text.BoundString(fontsL[i], t.Msg)
