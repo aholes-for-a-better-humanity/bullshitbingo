@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -15,6 +16,7 @@ type GridUI struct {
 	Columns, Lines int      // dimensions of the grid
 	Widgets        []Widget // widgets in Grid
 	imW, imH       int      // width and height of the layout
+	             sync.Mutex
 }
 
 // https://pkg.go.dev/github.com/hajimehoshi/ebiten/v2@v2.2.2?utm_source=gopls#Game
@@ -32,6 +34,8 @@ func (ui *GridUI) Draw(screen *ebiten.Image) {
 	case 1:
 		ui.Widgets[0].Draw(screen)
 	default:
+		ui.Lock()
+		defer ui.Unlock()
 		for i := range ui.Widgets {
 			ui.Widgets[i].Draw(ui.CellAt(screen, i))
 		}

@@ -3,6 +3,7 @@ package main
 import (
 	"image/color"
 	"os"
+	"time"
 
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/ui"
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/ui/widgets"
@@ -34,7 +35,11 @@ func main() {
 			&widgets.Text{Msg: `Go`, Bckgrd: color.RGBA{0x7f, 0x7f, 0x7f, 0xae}},
 		},
 	}
-	go runBBGame(UI)
+	for i := range UI.Widgets {
+		go UI.Widgets[i].Preload()
+	}
+
+	go func() { time.Sleep(5 * time.Second); runBBGame(UI) }()
 	err := ebiten.RunGame(UI)
 	if err != nil {
 		log.Fatal().Err(err).Msg(`exiting`)
