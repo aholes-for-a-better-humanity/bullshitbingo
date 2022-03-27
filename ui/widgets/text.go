@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"image"
 	"image/color"
+	"sync"
 
 	"github.com/rs/zerolog/log"
 
@@ -54,19 +55,30 @@ type Text struct {
 	Msg     string
 	Bckgrd  color.RGBA
 	Padding int // pixel value f the padding in p
+	lines   int // number of lines of text (if wrapped)
 	Fsize   float64
 	bboxL   []image.Rectangle
+	o       sync.Once
 }
 
 func (t *Text) Preload() {
+	//log.Debug().Str("text", t.Msg).Msg("preloading")
+	t.lines = 1
+	for _, run := range t.Msg {
+		if run == '\n' {
+			t.lines++
+		}
+	}
 	t.bboxL = make([]image.Rectangle, len(fontsL))
 	for i := 0; i < len(fontsL); i++ {
 		t.bboxL[i] = text.BoundString(fontsL[i], t.Msg)
 	}
 }
 
-func (t *Text) Update() error { return nil }
+func (t *Text) Update() error { t.o.Do(t.Preload); return nil }
 func (t *Text) Draw(screen *ebiten.Image) {
+	t.o.Do(t.Preload)
+	// log.Debug().Str("text", t.Msg).Msg("drawing")
 	screen.Fill(t.Bckgrd)
 	var textDims image.Rectangle
 	var fontFace font.Face
@@ -78,19 +90,22 @@ func (t *Text) Draw(screen *ebiten.Image) {
 			break
 		}
 	}
-	
+
 	// draws a bouding box of the text
-	// ebitenutil.DrawRect(screen, 
+	// ebitenutil.DrawRect(screen,
 	// 	float64(screen.Bounds().Min.X+(screen.Bounds().Dx()-textDims.Dx())/2),
 	// 	float64(screen.Bounds().Min.Y+(screen.Bounds().Dy()-textDims.Dy())/2),
 	// 	float64(textDims.Dx()), float64(textDims.Dy()), color.RGBA{0, 0, 0, 0xFF})
-
+	vcorrect := 0
+	if t.lines > 1 {
+		vcorrect = textDims.Min.Y * t.lines
+	}
 	decal := struct{ X, Y int }{ // origin vector to place text in center
 		X: screen.Bounds().Min.X - textDims.Min.X,
-		Y: screen.Bounds().Min.Y, // Align baselines (do not correct vertically with textDims.Min.Y)
+		Y: screen.Bounds().Min.Y + vcorrect, // Align baselines (do not correct vertically with textDims.Min.Y)
 	}
 	text.Draw(screen, t.Msg, fontFace,
 		decal.X+(screen.Bounds().Dx()-textDims.Dx())/2,
-		decal.Y+(screen.Bounds().Dy()+textDims.Dy())/2, 
+		decal.Y+(screen.Bounds().Dy()+textDims.Dy())/2,
 		color.White) // textDims is at first character position, so pixels start at Min.X,Min.Y
-	}
+}

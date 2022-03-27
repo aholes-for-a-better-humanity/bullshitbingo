@@ -13,10 +13,12 @@ var _ ebiten.Game = &GridUI{}
 
 // GridUI a versatile structure for a grid-layout-based game screen.
 type GridUI struct {
-	Columns, Lines int      // dimensions of the grid
-	Widgets        []Widget // widgets in Grid
-	imW, imH       int      // width and height of the layout
-	             sync.Mutex
+	Columns, Lines int         // dimensions of the grid
+	Widgets        []Widget    // widgets in Grid
+	ImW, ImH       int         // width and height of the layout
+	Orig           image.Point // origin of the grid (relative to screen)
+	sync.Mutex
+	o sync.Once
 }
 
 // https://pkg.go.dev/github.com/hajimehoshi/ebiten/v2@v2.2.2?utm_source=gopls#Game
@@ -28,6 +30,8 @@ func (ui *GridUI) Update() error { return nil }
 //
 // The give argument represents a screen image. The updated content is adopted as the game screen.
 func (ui *GridUI) Draw(screen *ebiten.Image) {
+	w, h := screen.Size()
+	ui.Layout(w, h)
 	switch len(ui.Widgets) {
 	case 0:
 		ebitenutil.DebugPrint(screen, `no widget in grid`)
@@ -45,7 +49,7 @@ func (ui *GridUI) Draw(screen *ebiten.Image) {
 // Layout accepts a native outside size in device-independent pixels and returns the game's logical screen
 // size.
 func (ui *GridUI) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	ui.imW, ui.imH = outsideWidth, outsideHeight
+	ui.ImW, ui.ImH = outsideWidth, outsideHeight
 	return outsideWidth, outsideHeight
 }
 
@@ -63,8 +67,8 @@ func (ui *GridUI) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHe
 func (ui *GridUI) CellAt(screen *ebiten.Image, i int) *ebiten.Image {
 	lin, col := gridPos(i, ui.Lines, ui.Columns)
 
-	remainderX := ui.imW % ui.Columns
-	remainderY := ui.imH % ui.Lines
+	remainderX := ui.ImW % ui.Columns
+	remainderY := ui.ImH % ui.Lines
 	var adjX int
 	var adjY int
 	var adjW int
@@ -82,11 +86,17 @@ func (ui *GridUI) CellAt(screen *ebiten.Image, i int) *ebiten.Image {
 		adjY = remainderY
 	}
 
-	cellWidth := ui.imW / ui.Columns
-	cellHeight := ui.imH / ui.Lines
+	cellWidth := ui.ImW / ui.Columns
+	cellHeight := ui.ImH / ui.Lines
 	crop := image.Rectangle{
-		Min: image.Point{X: adjX + col*cellWidth, Y: adjY + lin*cellHeight},
-		Max: image.Point{X: adjX + adjW + (col+1)*cellWidth, Y: adjY + adjH + (lin+1)*cellHeight},
+		Min: image.Point{
+			X: adjX + col*cellWidth + screen.Bounds().Min.X,
+			Y: adjY + lin*cellHeight + screen.Bounds().Min.Y,
+		},
+		Max: image.Point{
+			X: adjX + adjW + (col+1)*cellWidth + screen.Bounds().Min.X,
+			Y: adjY + adjH + (lin+1)*cellHeight + screen.Bounds().Min.Y,
+		},
 	}
 	// log.Debug().
 	// 	Int(`colWidth`, colWidth).
