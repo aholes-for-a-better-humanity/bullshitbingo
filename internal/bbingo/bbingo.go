@@ -23,7 +23,9 @@ import (
 )
 
 var Finished = errors.New("ended")
-var invalidationDelay = time.Minute // time we wait before invalidating a word checked, if no one confirms
+var invalidationDelay = 10 * time.Second // time we wait before invalidating a word checked, if no one confirms
+var quorum = .5
+
 type gameEventSignal int
 
 const (
@@ -33,6 +35,7 @@ const (
 	gameEventMsg                                     // ticker message, has `payload`,`color`,`duration`
 	gameWordPressed                                  // word pressed, has `word`
 	gameWordPressInvalidation                        // word previously pressed by this user is invalidated, has `word`
+	gameWordPressedByOther                           // word pressed by someone else, has `word`
 )
 
 type gameEvent struct {
@@ -54,13 +57,22 @@ type Game struct {
 	ctx              context.Context
 	widget           ui.Widget
 	events           chan gameEvent
+	toNetwork        chan netMsg // for things to publish towards the others
 	touchIDs         []ebiten.TouchID
 	cursorX, cursorY int // position of last touch or click
 	//
-	nickname       string
-	ourWords       []string        // list of reference expressions in the GUI
-	checkedWords   map[string]bool // words we have checked ourselves
-	validatedWords map[string]bool // words that are validated by communication
+	nickname    string
+	gameWeAreIn string                      // the game we are in
+	ourWords    map[string]*validationLevel // list of reference expressions (unsplitted) in the GUI
+	whoHas      map[string][]string         // key:(real)word, value:nicknames of posessors
+}
+type presenceMap = map[string]bool
+type netMsg struct{ topic, content string }
+type validationLevel struct {
+	validated bool
+	self      int // have we pressed this word ourselves ?
+	total     int // how many players (self included) have this word ?
+	others    int // how many others have pressed it ?
 }
 
 // Init prepares the game, and sets up the lifecycle
@@ -69,16 +81,14 @@ func (g *Game) Init() { g.initOnce.Do(g.init) }
 // init is called once. It initializes g, and makes it
 // "live" async in between calls to Draw and Update
 func (g *Game) init() {
-	g.events = make(chan gameEvent, 4) // buffer to avoid blocking
-	g.checkedWords = make(map[string]bool, 25)
-	g.validatedWords = make(map[string]bool, 25)
-	ctx, _ := context.WithCancel(context.Background())
-	g.eg, g.ctx = errgroup.WithContext(ctx)
+	g.events = make(chan gameEvent, 4)  // buffer to avoid blocking
+	g.toNetwork = make(chan netMsg, 64) // same here
+	g.ourWords = make(map[string]*validationLevel, 25)
+	g.whoHas = make(map[string][]string)
+	// ctx, _ := context.WithCancel(context.Background())
+	g.eg, g.ctx = errgroup.WithContext(context.Background())
+	g.nickname = strings.Join([]string{faker.Username(), faker.Username()}, " ")
 	g.eg.Go(g.lifecycle)
-	g.eg.Go(func() error {
-		g.nickname = strings.Join([]string{faker.Username(), faker.Username()}, " ")
-		return nil
-	})
 	// initial widget is the splash/welcome screen
 	bsbg := strings.Split("bull shit bin Go", " ")
 	g.widget = &ui.GridUI{
@@ -99,7 +109,6 @@ func (g *Game) Update() error {
 	g.Init()
 	if g.isKeyJustPressed() { // process touch/click
 		log.Debug().Int("X", g.cursorX).Int("Y", g.cursorY).Send()
-		// TODO propagate to widgets
 		if gui, ok := g.widget.(*GUI); ok {
 			word := gui.WordAt(g.cursorX, g.cursorY)
 			g.events <- gameEvent{
@@ -146,13 +155,19 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 	return outsideWidth, outsideHeight
 }
 
-// lifecycle runs as long as the game is on screen,
+// lifecycle runs as long as the game is on screen
 func (g *Game) lifecycle() error {
+	gui := NewGUI(g.nickname, "")
+	for _, w := range gui.Words() {
+		g.ourWords[w] = &validationLevel{}
+	}
 	g.eg.Go(g.timeline)
 	g.eg.Go(g.sigCatcher)
+	g.eg.Go(g.network)
 	for {
 		select {
 		case <-g.ctx.Done():
+			log.Error().Err(g.ctx.Err()).Msg("")
 			return g.ctx.Err()
 		case ev := <-g.events:
 			switch ev.sig {
@@ -160,10 +175,7 @@ func (g *Game) lifecycle() error {
 				g.randomizeSplash()
 			case gameEventStartPlay:
 				// go to "game mode"
-				gui := NewGUI(g.nickname, "")
 				g.widget = gui
-				g.ourWords = gui.Words()
-				log.Debug().Strs("our_words", g.ourWords).Msg("going game mode")
 			case gameEventEndRun:
 				log.Debug().Msg("byebye")
 				return Finished // an error here closes the context and ends the program
@@ -175,6 +187,24 @@ func (g *Game) lifecycle() error {
 			case gameWordPressed:
 				// a word has just been touched/pressed
 				g.gameWordPressed(ev.word)
+			case gameWordPressedByOther:
+				realWord := strings.ReplaceAll(ev.word, "\n", " ")
+				// register external press
+				g.ourWords[realWord].others++
+				if float64(g.ourWords[realWord].self+g.ourWords[realWord].others) > float64(g.ourWords[realWord].total)*quorum {
+					// check validation if more than quorum
+					g.ourWords[realWord].validated = true
+				}
+				// TODO apply the correct color on the corresponding square
+
+				// if g.checkedWords[realWord] {
+				// 	g.validatedWords[realWord] = true
+				// } else { //we didn't check before
+				// 	g.checkedWords[realWord] = true
+				// 	if gui, ok := g.widget.(*GUI); ok {
+				// 		gui.ColorWord(ev.word, ui.Green)
+				// 	}
+				// }
 			case gameWordPressInvalidation:
 				g.invalidate(ev.word)
 			default:
@@ -185,16 +215,20 @@ func (g *Game) lifecycle() error {
 
 func (g *Game) invalidate(word string) {
 	realWord := strings.ReplaceAll(word, "\n", " ")
-	g.checkedWords[realWord] = false
+	r := g.ourWords[realWord]
+	r.self = 1
 	if gui, ok := g.widget.(*GUI); ok {
 		gui.ColorWord(word, ui.Greys[rand.Intn(len(ui.Greys))])
 		g.events <- gameEvent{sig: gameEventMsg, payload: fmt.Sprintf("«%s» forgotten", realWord), color: ui.Red, dur: 2 * time.Second}
 	}
 }
 
+// gameWordPressed is inviked when *we* press a word onscreen
 func (g *Game) gameWordPressed(word string) error {
 	realWord := strings.ReplaceAll(word, "\n", " ")
-	hadItBefore := g.checkedWords[realWord]
+	hadItBefore := g.ourWords[realWord].self == 1
+	// TODO colour it as a tentative or validated → a method would be useful
+
 	// 1 / color it
 	col := ui.Green
 	if hadItBefore {
@@ -204,9 +238,13 @@ func (g *Game) gameWordPressed(word string) error {
 		gui.ColorWord(word, col)
 	}
 	// 2 / register state (TODO)
-	g.checkedWords[realWord] = !g.checkedWords[realWord]
-	// 3 / communicate (TODO) (beware:split lines in result of WordAt)
-	g.eg.Go(func() error { return g.invalidateLater(word) })
+	if !g.ourWords[realWord].validated {
+		g.ourWords[realWord].self = 0
+	} else {
+		// 3 / communicate (TODO) (beware:split lines in result of WordAt)
+		g.eg.Go(func() error { g.toNetwork <- netMsg{topic: pressedWordsTopic, content: realWord}; return nil })
+		g.eg.Go(func() error { return g.invalidateLater(realWord) })
+	}
 	return nil
 }
 
@@ -217,7 +255,7 @@ func (g *Game) invalidateLater(word string) error {
 		return g.ctx.Err()
 	case <-time.After(invalidationDelay):
 		log.Debug().Str("word_to_invalidate", word).Send()
-		if !g.validatedWords[word] {
+		if !g.ourWords[word].validated {
 			g.events <- gameEvent{sig: gameWordPressInvalidation, word: word}
 		}
 		return nil
@@ -244,6 +282,7 @@ splashScreen:
 	// wait for end of run.
 	select {
 	case <-g.ctx.Done():
+		log.Debug().Err(g.ctx.Err()).Send()
 		return g.ctx.Err()
 	}
 }
@@ -297,6 +336,7 @@ func (g *Game) sigCatcher() error {
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case <-g.ctx.Done():
+		log.Debug().Err(g.ctx.Err()).Send()
 		return g.ctx.Err()
 	case s := <-c:
 		return fmt.Errorf(`signal: %s`, s)

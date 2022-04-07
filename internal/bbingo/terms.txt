@@ -1,25 +1,177 @@
-A
-B 
-C et D
-oaiusf asdfoiu\
-asdofij
-odisfu
-o
-asdf iughalsj  
-asdgis;adgjhas
- s;dglakiasg 
-longue expression qui ne sert à rien
-neuf
-historique
-iso
-lourd
-la cour des grands
-delivrer
-equipe
-rugby
-challenge
+architect
+procédure
+pipeline
+affaire
+hosté
+driver
+dashboarding
+performance
+croissance
+flat
+diversité
+responsable
+la supply
+écosystème
+benchmark
+marque
+cultiver
+identité de marque
+plateforme de marque
+marque
+drive/driver
+engager/engagé
+ingénieurer
+les opérations (à l'anglaise)
+étendre
+faciliter
+implement
 innover
-champ
-devops
- generate
- ah ok
+integrer
+iterer
+matrice
+maximiser
+capitaliser
+optimiser
+orchestrer
+productiver
+recontextualiser
+redefinir
+reinventer
+revolutioner
+scaler
+à l'échelle
+scalable
+strategie
+synergie
+cible/cibler
+transformer
+transition
+libérer
+pitch
+visibility
+bobsleigh
+rugby
+participation
+24/365
+24/7
+b2b
+b2c
+salesforce
+back-end
+bleeding-edge
+au top
+aventure humaine
+collaboratif
+cross-platform
+custom
+x point zéro
+distribué
+as a service
+dynamique
+efficient (à la française)
+extensible
+global
+mondial
+innovant
+integrer
+killer
+next-generation
+one-to-one
+open-source
+out-of-the-box
+plug-and-play
+real-time
+revolutionaire
+riche
+robuste
+scalable
+sexy
+strategique
+360 degrés
+transparence
+vertical
+viral
+recruter
+visionaire
+applications
+architectures
+channels
+communautés
+convergence
+deliverables
+e-business
+e-commerce
+e-markets
+e-services
+ergonomie
+experiences
+functionalities
+roadmap
+infrastructures
+initiatives
+interfaces
+markets
+marchés
+methodologies
+metriques
+niches
+paradigms
+partenaires
+platforms
+portail
+roi
+synergies
+schemas
+solutions
+supply-chains
+systems
+technologies
+users
+web services
+mobilité
+stategic
+dans le pipe
+/le client clef/
+/grand compte/
+performer
+formidable
+cooptation
+barrez-vous
+/le nombre de gens/
+pure player
+dark store
+challenge (à l'anglaise)
+challenger (à la française)
+les restultats sont très bon
+merci <service>
+merci <partenaire>
+forte croissance
+anticiper le futur
+cloud
+focus
+historique
+/un emoji à l'écran/
+délivrer (pour "livrer")
+solidifier
+full mobile
+proche du terrain
+refondu
+pipeline
+gros potentiel
+retail
+se projeter
+prendre du plaisir
+certification
+des talents
+accelerer
+agile
+flexible
+la diversité
+sociétal
+inspirant
+initiative
+inventer
+flat
+budgeté
+la cour des grands
+grace a vous
