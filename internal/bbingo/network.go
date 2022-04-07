@@ -161,7 +161,6 @@ func (g *Game) networkMainLoop(jsc nats.JetStreamContext) error {
 			g.networkProcess(topic, sender, content)
 		}
 	}
-	return nil
 }
 
 func (g *Game) networkProcess(topic, sender, content string) {

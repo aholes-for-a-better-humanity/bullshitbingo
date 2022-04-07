@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"image"
 	"image/color"
-	"math/rand"
 	"strings"
 
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/ui"
@@ -23,11 +22,11 @@ func NewGUI(head, foot string) *GUI {
 		Widgets: make([]ui.Widget, 25),
 	}
 	for i := 0; i < len(g.B.Widgets); i++ {
-		rand.Shuffle(len(ui.Greys),
-			func(i, j int) { ui.Greys[i], ui.Greys[j] = ui.Greys[j], ui.Greys[i] })
+		// rand.Shuffle(len(ui.Greys),
+		// 	func(i, j int) { ui.Greys[i], ui.Greys[j] = ui.Greys[j], ui.Greys[i] })
 		g.B.Widgets[i] = &widgets.Text{
 			Msg: terms[i], Padding: 4,
-			Bckgrd: ui.Greys[i%len(ui.Greys)],
+			Bckgrd: ui.Red,
 		}
 		g.words = append(g.words, strings.ReplaceAll(terms[i], "\n", " "))
 	}
@@ -77,6 +76,9 @@ func (gui *GUI) WordAt(x, y int) string {
 	decal := image.Point{x - gui.B.Orig.X, y - gui.B.Orig.Y}
 	line := decal.Y / (gui.B.ImH / gui.B.Lines)
 	column := decal.X / (gui.B.ImW / gui.B.Columns)
+	if 5*line+column > 24 {
+		return ""
+	}
 	if widg, ok := gui.B.Widgets[5*line+column].(*widgets.Text); ok {
 		w := widg.Msg
 		log.Debug().Int("x", decal.X).Int("y", decal.Y).Int("line", line).Int("column", column).Str("w", w).Msg("(*GUI).WordAt")
@@ -86,13 +88,22 @@ func (gui *GUI) WordAt(x, y int) string {
 }
 
 // ColorWord colors the corresponding widget(s) with this colour
-func (gui *GUI) ColorWord(word string, color color.RGBA) {
-	for _, widg := range gui.B.Widgets {
+func (gui *GUI) ColorWord(word string, vl *validationLevel) {
+	color := ui.Grey
+	// TODO VARY COLOR
+	// if self-touched, increase green
+	// if validated, set Blue
+	// in any case, set a "nice" Grey
+	for pos, widg := range gui.B.Widgets {
 		if widg, ok := widg.(*widgets.Text); ok {
-			if widg.Msg != word {
+			if MkRealWord(widg.Msg) != word {
+				// log.Trace().Str("word", word).Int("pos", pos).Str("msg", widg.Msg).Send()
 				continue
 			}
+			log.Info().Str("word", word).Send()
+			color = ui.Greys[pos%len(ui.Greys)]
 			widg.Bckgrd = color
+			return
 		}
 	}
 }

@@ -57,12 +57,11 @@ func (ui *GridUI) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHe
 //
 // numbers are laid out line by line, from left to right, lines laid out top to bottom.
 // A 4*3 grid would be numbered :
+//
 //  // 0  1  2  3
 //  // 4  5  6  7
 //  // 8  9 10 11
-// FIXME: width or height divides by columns or lines is not always a whole number
-// the remainder can be up to numcols-1 / numlines-1, and must be distributed
-// evenly accross columns / lines
+//
 // Warning, if you increase size of a cell, the next cell will have an offset, too
 func (ui *GridUI) CellAt(screen *ebiten.Image, i int) *ebiten.Image {
 	lin, col := gridPos(i, ui.Lines, ui.Columns)

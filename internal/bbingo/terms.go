@@ -21,11 +21,16 @@ func init() {
 	allTerms = ""
 }
 
+// MkRealWord recreates the one-line string from a word that had newlines
+func MkRealWord(word string) string {
+	return strings.ReplaceAll(word, "\n", " ")
+}
+
 func trysplit(s string) string {
 	if len(s) < 12 {
 		return s
 	}
-	if !strings.Contains(s, "") {
+	if !strings.Contains(s, " ") {
 		return s
 	}
 	// start at about the middle and try to split close

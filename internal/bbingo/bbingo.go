@@ -176,6 +176,12 @@ func (g *Game) lifecycle() error {
 			case gameEventStartPlay:
 				// go to "game mode"
 				g.widget = gui
+				log.Info().Int("words", len(g.ourWords)).Send()
+				for w := range g.ourWords {
+					log.Info().Str("w", w).Msg("coloring")
+					g.ColorWord(w)
+				}
+				log.Info().Msg("done colouring")
 			case gameEventEndRun:
 				log.Debug().Msg("byebye")
 				return Finished // an error here closes the context and ends the program
@@ -195,16 +201,7 @@ func (g *Game) lifecycle() error {
 					// check validation if more than quorum
 					g.ourWords[realWord].validated = true
 				}
-				// TODO apply the correct color on the corresponding square
-
-				// if g.checkedWords[realWord] {
-				// 	g.validatedWords[realWord] = true
-				// } else { //we didn't check before
-				// 	g.checkedWords[realWord] = true
-				// 	if gui, ok := g.widget.(*GUI); ok {
-				// 		gui.ColorWord(ev.word, ui.Green)
-				// 	}
-				// }
+				g.ColorWord(ev.word)
 			case gameWordPressInvalidation:
 				g.invalidate(ev.word)
 			default:
@@ -216,35 +213,35 @@ func (g *Game) lifecycle() error {
 func (g *Game) invalidate(word string) {
 	realWord := strings.ReplaceAll(word, "\n", " ")
 	r := g.ourWords[realWord]
-	r.self = 1
+	r.self = 0
+
+}
+
+// ColorWord fetches necessary info for a word and calls eponymous method from the gui
+// word argument is RAW, with line feeds.
+func (g *Game) ColorWord(word string) {
+	log.Debug().Caller().Str("word", word).Msg("(g *Game) ColorWord(word string)")
+	realWord := strings.ReplaceAll(word, "\n", " ")
 	if gui, ok := g.widget.(*GUI); ok {
-		gui.ColorWord(word, ui.Greys[rand.Intn(len(ui.Greys))])
-		g.events <- gameEvent{sig: gameEventMsg, payload: fmt.Sprintf("«%s» forgotten", realWord), color: ui.Red, dur: 2 * time.Second}
+		gui.ColorWord(word, g.ourWords[realWord])
 	}
 }
 
 // gameWordPressed is inviked when *we* press a word onscreen
 func (g *Game) gameWordPressed(word string) error {
 	realWord := strings.ReplaceAll(word, "\n", " ")
-	hadItBefore := g.ourWords[realWord].self == 1
 	// TODO colour it as a tentative or validated → a method would be useful
-
 	// 1 / color it
-	col := ui.Green
-	if hadItBefore {
-		col = ui.Greys[rand.Intn(len(ui.Greys))]
-	}
-	if gui, ok := g.widget.(*GUI); ok {
-		gui.ColorWord(word, col)
-	}
 	// 2 / register state (TODO)
-	if !g.ourWords[realWord].validated {
+	if g.ourWords[realWord] != nil && !g.ourWords[realWord].validated {
 		g.ourWords[realWord].self = 0
 	} else {
 		// 3 / communicate (TODO) (beware:split lines in result of WordAt)
+		g.ourWords[realWord].self = 1
 		g.eg.Go(func() error { g.toNetwork <- netMsg{topic: pressedWordsTopic, content: realWord}; return nil })
 		g.eg.Go(func() error { return g.invalidateLater(realWord) })
 	}
+	g.ColorWord(word)
 	return nil
 }
 
