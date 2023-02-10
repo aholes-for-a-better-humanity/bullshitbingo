@@ -69,10 +69,11 @@ type Game struct {
 type presenceMap = map[string]bool
 type netMsg struct{ topic, content string }
 type validationLevel struct {
-	validated bool
-	self      int // have we pressed this word ourselves ?
-	total     int // how many players (self included) have this word ?
-	others    int // how many others have pressed it ?
+	Validated     bool
+	Self          int    // have we pressed this word ourselves ?
+	total         int    // how many players (self included) have this word ?
+	OthersPressed int    // how many others have pressed it ?
+	Word          string // FIXME remove (test)
 }
 
 // Init prepares the game, and sets up the lifecycle
@@ -159,7 +160,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 func (g *Game) lifecycle() error {
 	gui := NewGUI(g.nickname, "")
 	for _, w := range gui.Words() {
-		g.ourWords[w] = &validationLevel{}
+		g.ourWords[w] = &validationLevel{Word: w}
 	}
 	g.eg.Go(g.timeline)
 	g.eg.Go(g.sigCatcher)
@@ -179,7 +180,7 @@ func (g *Game) lifecycle() error {
 				log.Info().Int("words", len(g.ourWords)).Send()
 				for w := range g.ourWords {
 					log.Info().Str("w", w).Msg("coloring")
-					g.ColorWord(w)
+					g.ColorWord(w, g.ourWords[w])
 				}
 				log.Info().Msg("done colouring")
 			case gameEventEndRun:
@@ -196,12 +197,13 @@ func (g *Game) lifecycle() error {
 			case gameWordPressedByOther:
 				realWord := strings.ReplaceAll(ev.word, "\n", " ")
 				// register external press
-				g.ourWords[realWord].others++
-				if float64(g.ourWords[realWord].self+g.ourWords[realWord].others) > float64(g.ourWords[realWord].total)*quorum {
+				g.ourWords[realWord].OthersPressed++ // TODO if pressed twice by same player, don't increment again
+				if float64(g.ourWords[realWord].Self+g.ourWords[realWord].OthersPressed) > float64(g.ourWords[realWord].total)*quorum {
 					// check validation if more than quorum
-					g.ourWords[realWord].validated = true
+					g.ourWords[realWord].Validated = true
 				}
-				g.ColorWord(ev.word)
+				log.Debug().Msg("press by other")
+				g.ColorWord(ev.word, g.ourWords[realWord]) // TODO validate also for sender when quorum is reached
 			case gameWordPressInvalidation:
 				g.invalidate(ev.word)
 			default:
@@ -213,35 +215,47 @@ func (g *Game) lifecycle() error {
 func (g *Game) invalidate(word string) {
 	realWord := strings.ReplaceAll(word, "\n", " ")
 	r := g.ourWords[realWord]
-	r.self = 0
-
+	r.Self = 0
+	g.ColorWord(word, r)
 }
 
 // ColorWord fetches necessary info for a word and calls eponymous method from the gui
 // word argument is RAW, with line feeds.
-func (g *Game) ColorWord(word string) {
-	log.Debug().Caller().Str("word", word).Msg("(g *Game) ColorWord(word string)")
-	realWord := strings.ReplaceAll(word, "\n", " ")
+func (g *Game) ColorWord(word string, vl *validationLevel) {
+	log.Debug().Caller().
+		Interface("vl", vl).
+		Str("word", word).
+		Msg("(g *Game) ColorWord(word string)")
 	if gui, ok := g.widget.(*GUI); ok {
-		gui.ColorWord(word, g.ourWords[realWord])
+		gui.ColorWord(word, vl)
 	}
 }
 
 // gameWordPressed is inviked when *we* press a word onscreen
 func (g *Game) gameWordPressed(word string) error {
 	realWord := strings.ReplaceAll(word, "\n", " ")
-	// TODO colour it as a tentative or validated → a method would be useful
-	// 1 / color it
-	// 2 / register state (TODO)
-	if g.ourWords[realWord] != nil && !g.ourWords[realWord].validated {
-		g.ourWords[realWord].self = 0
+	// register state
+	v, ok := g.ourWords[realWord]
+	if !ok {
+		log.Warn().Str("rw", realWord).Msg("NOT OK")
+		return nil
+	}
+	g.ourWords[realWord] = v
+	// FIXME pointers or smth makes sharing the value NOK
+	log := log.With().Str(".", "(g *Game) gameWordPressed").Logger()
+	log.Debug().Interface("vl", g.ourWords[realWord]).Interface("v", v).Send()
+	if (g.ourWords[realWord].Self == 1) && (!g.ourWords[realWord].Validated) {
+		log.Warn().Msg("unchecking")
+		v = g.ourWords[realWord]
+		v.Self = 0
 	} else {
-		// 3 / communicate (TODO) (beware:split lines in result of WordAt)
-		g.ourWords[realWord].self = 1
+		v.Self = 1
+		// communicate (beware:split lines in result of WordAt)
 		g.eg.Go(func() error { g.toNetwork <- netMsg{topic: pressedWordsTopic, content: realWord}; return nil })
 		g.eg.Go(func() error { return g.invalidateLater(realWord) })
 	}
-	g.ColorWord(word)
+	// show
+	g.ColorWord(word, v)
 	return nil
 }
 
@@ -252,7 +266,7 @@ func (g *Game) invalidateLater(word string) error {
 		return g.ctx.Err()
 	case <-time.After(invalidationDelay):
 		log.Debug().Str("word_to_invalidate", word).Send()
-		if !g.ourWords[word].validated {
+		if !g.ourWords[word].Validated {
 			g.events <- gameEvent{sig: gameWordPressInvalidation, word: word}
 		}
 		return nil

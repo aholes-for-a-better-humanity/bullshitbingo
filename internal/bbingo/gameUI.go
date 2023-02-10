@@ -81,7 +81,7 @@ func (gui *GUI) WordAt(x, y int) string {
 	}
 	if widg, ok := gui.B.Widgets[5*line+column].(*widgets.Text); ok {
 		w := widg.Msg
-		log.Debug().Int("x", decal.X).Int("y", decal.Y).Int("line", line).Int("column", column).Str("w", w).Msg("(*GUI).WordAt")
+		// log.Debug().Int("x", decal.X).Int("y", decal.Y).Int("line", line).Int("column", column).Str("w", w).Msg("(*GUI).WordAt")
 		return w
 	}
 	return ""
@@ -90,18 +90,41 @@ func (gui *GUI) WordAt(x, y int) string {
 // ColorWord colors the corresponding widget(s) with this colour
 func (gui *GUI) ColorWord(word string, vl *validationLevel) {
 	color := ui.Grey
-	// TODO VARY COLOR
+	// TODO VARY COLOR -- make a beautiful grid
 	// if self-touched, increase green
 	// if validated, set Blue
 	// in any case, set a "nice" Grey
-	for pos, widg := range gui.B.Widgets {
+	for pos, widg := range gui.B.Widgets { // find the widget we want to adress
 		if widg, ok := widg.(*widgets.Text); ok {
-			if MkRealWord(widg.Msg) != word {
-				// log.Trace().Str("word", word).Int("pos", pos).Str("msg", widg.Msg).Send()
+			realMsg := MkRealWord(widg.Msg)
+			realWord := MkRealWord(word)
+			log := log.With().
+				Str("word", word).
+				Str("msg", widg.Msg).
+				Str("realW", realWord).
+				Str("realM", realMsg).
+				Interface("vl", vl).
+				Logger()
+			if !strings.EqualFold(realMsg, realWord) {
+				// log.Trace().Int("pos", pos).Msg("not this")
 				continue
 			}
-			log.Info().Str("word", word).Send()
-			color = ui.Greys[pos%len(ui.Greys)]
+			log.Info().Msg("this")
+			color = ui.Greys[(pos/5)%(2)+1+(pos%5)%2+1]
+			switch {
+			case vl.Validated:
+				log.Debug().Msg("validated")
+				color = ui.BlueVal
+			case vl.Self != 0:
+				log.Debug().Msg("self")
+				color = ui.Green
+			default:
+				log.Debug().
+					Int("self", vl.Self).
+					Bool("val", vl.Validated).
+					Interface("vl", vl).
+					Send()
+			}
 			widg.Bckgrd = color
 			return
 		}

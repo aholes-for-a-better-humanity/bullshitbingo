@@ -37,12 +37,23 @@ const (
 
 // network provides communication capabilities for *Game
 func (g *Game) network() error {
-	nc, err := nats.Connect(defaultNatsEndPoint)
-	if err != nil {
-		log.Error().Err(err).Send()
-		return err
+	var nc *nats.Conn
+	var err error
+
+	for {
+		nc, err = nats.Connect(defaultNatsEndPoint)
+		if err == nil {
+			defer nc.Close()
+			break
+		}
+		select {
+		case <-g.ctx.Done():
+			return g.ctx.Err()
+		default:
+			log.Error().Err(err).Msg("nats.Connect")
+		}
 	}
-	defer nc.Close()
+
 	jsc, err := nc.JetStream()
 	if err != nil {
 		log.Error().Err(err).Send()
@@ -154,6 +165,7 @@ func (g *Game) networkMainLoop(jsc nats.JetStreamContext) error {
 			sub := strings.Join([]string{"game", g.gameWeAreIn, nm.topic}, ".")
 			jsc.Publish(sub, []byte(g.nickname+"|"+nm.content))
 		case msg := <-ch:
+			msg.Ack()
 			subjTokens := strings.Split(msg.Subject, ".")
 			topic := subjTokens[len(subjTokens)-1]
 			datacontent := strings.Split(string(msg.Data), "|")
