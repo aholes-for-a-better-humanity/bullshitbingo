@@ -72,10 +72,9 @@ type Game struct {
 type netMsg struct{ topic, content string }
 type validationLevel struct {
 	Validated     bool
-	Self          int    // have we pressed this word ourselves ?
-	total         int    // how many players (self included) have this word ?
-	OthersPressed int    // how many others have pressed it ?
-	Word          string // FIXME remove (test)
+	Self          int // have we pressed this word ourselves ?
+	total         int // how many players (self included) have this word ?
+	OthersPressed int // how many others have pressed it ?
 }
 
 // Init prepares the game, and sets up the lifecycle
@@ -163,7 +162,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 func (g *Game) lifecycle() error {
 	gui := NewGUI(g.nickname, "")
 	for _, w := range gui.Words() {
-		g.ourWords[w] = &validationLevel{Word: w}
+		g.ourWords[w] = &validationLevel{}
 	}
 	// TODO : notify all players when leaving game (and adjust counts, quorum, etc.)
 	g.eg.Go(g.timeline)
