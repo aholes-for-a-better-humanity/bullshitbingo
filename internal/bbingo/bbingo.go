@@ -165,6 +165,7 @@ func (g *Game) lifecycle() error {
 	for _, w := range gui.Words() {
 		g.ourWords[w] = &validationLevel{Word: w}
 	}
+	// TODO : notify all players when leaving game (and adjust counts, quorum, etc.)
 	g.eg.Go(g.timeline)
 	g.eg.Go(g.sigCatcher)
 	g.eg.Go(g.network)

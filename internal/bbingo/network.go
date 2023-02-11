@@ -23,9 +23,9 @@ import (
 )
 
 var (
-	defaultNatsEndPoint       = "nats://127.0.0.1:4222"
-	gameOpeningPeriodDuration = 15 * time.Minute  // duration to accept players into a same game
-	gamePlayingPeriodDuration = 180 * time.Minute // (expected) duration of a game after first player opened it
+	defaultNatsEndPoint       = "nats://127.0.0.1:4222" // demo.nats.io:4222 works just fine
+	gameOpeningPeriodDuration = 15 * time.Minute        // duration to accept players into a same game
+	gamePlayingPeriodDuration = 180 * time.Minute       // (expected) duration of a game after first player opened it
 )
 
 const (
