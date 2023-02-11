@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aholes-for-a-better-humanity/bullshitbingo/internal/misc"
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/ui"
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/ui/widgets"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -33,7 +34,7 @@ const (
 	gameEventRandomizeSplash                         // no extra data
 	gameEventEndRun                                  // no extra data
 	gameEventMsg                                     // ticker message, has `payload`,`color`,`duration`
-	gameWordPressed                                  // word pressed, has `word`
+	gameWordPressed                                  // word pressed, has `word`(by ourself)
 	gameWordPressInvalidation                        // word previously pressed by this user is invalidated, has `word`
 	gameWordPressedByOther                           // word pressed by someone else, has `word`
 )
@@ -65,6 +66,7 @@ type Game struct {
 	gameWeAreIn string                      // the game we are in
 	ourWords    map[string]*validationLevel // list of reference expressions (unsplitted) in the GUI
 	whoHas      map[string][]string         // key:(real)word, value:nicknames of posessors
+	whoPressed  map[string][]string         // key:(real)word, value:nicknames of people who pressed
 }
 type presenceMap = map[string]bool
 type netMsg struct{ topic, content string }
@@ -86,6 +88,7 @@ func (g *Game) init() {
 	g.toNetwork = make(chan netMsg, 64) // same here
 	g.ourWords = make(map[string]*validationLevel, 25)
 	g.whoHas = make(map[string][]string)
+	g.whoPressed = make(map[string][]string)
 	// ctx, _ := context.WithCancel(context.Background())
 	g.eg, g.ctx = errgroup.WithContext(context.Background())
 	g.nickname = strings.Join([]string{faker.Username(), faker.Username()}, " ")
@@ -195,21 +198,34 @@ func (g *Game) lifecycle() error {
 				// a word has just been touched/pressed
 				g.gameWordPressed(ev.word)
 			case gameWordPressedByOther:
-				realWord := strings.ReplaceAll(ev.word, "\n", " ")
-				// register external press
-				g.ourWords[realWord].OthersPressed++ // TODO if pressed twice by same player, don't increment again
-				if float64(g.ourWords[realWord].Self+g.ourWords[realWord].OthersPressed) > float64(g.ourWords[realWord].total)*quorum {
-					// check validation if more than quorum
-					g.ourWords[realWord].Validated = true
-				}
-				log.Debug().Msg("press by other")
-				g.ColorWord(ev.word, g.ourWords[realWord]) // TODO validate also for sender when quorum is reached
+				g.otherPressed(ev)
 			case gameWordPressInvalidation:
 				g.invalidate(ev.word)
 			default:
 			}
 		}
 	}
+}
+
+// react to an event for someone else pressing a word
+func (g *Game) otherPressed(ev gameEvent) {
+	realWord := strings.ReplaceAll(ev.word, "\n", " ")
+	// register external press
+	if misc.Has(g.whoPressed[realWord], ev.sender) {
+		return // another press by the same player will not advance toward quorum
+	} else {
+		// assuming we register the first press somewhere
+		g.whoPressed[realWord] = append(g.whoPressed[realWord], ev.sender)
+	}
+	g.ourWords[realWord].OthersPressed++
+	if float64(
+		g.ourWords[realWord].Self+
+			g.ourWords[realWord].OthersPressed) > float64(g.ourWords[realWord].total)*quorum {
+		// check validation if more than quorum
+		g.ourWords[realWord].Validated = true
+	}
+	log.Debug().Msg("press by other")
+	g.ColorWord(ev.word, g.ourWords[realWord])
 }
 
 func (g *Game) invalidate(word string) {
@@ -253,6 +269,7 @@ func (g *Game) gameWordPressed(word string) error {
 		// communicate (beware:split lines in result of WordAt)
 		g.eg.Go(func() error { g.toNetwork <- netMsg{topic: pressedWordsTopic, content: realWord}; return nil })
 		g.eg.Go(func() error { return g.invalidateLater(realWord) })
+		// TODO validate also for sender when quorum is reached
 	}
 	// show
 	g.ColorWord(word, v)

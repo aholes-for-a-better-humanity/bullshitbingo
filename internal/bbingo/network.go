@@ -200,7 +200,7 @@ func (g *Game) networkProcess(topic, sender, content string) {
 		}
 	case pressedWordsTopic:
 		if _, ok := g.ourWords[content]; ok {
-			g.events <- gameEvent{sig: gameWordPressedByOther, word: content}
+			g.events <- gameEvent{sig: gameWordPressedByOther, word: content, sender: sender}
 		}
 	default:
 		log.Error().Msg("missed")
