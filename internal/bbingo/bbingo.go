@@ -23,7 +23,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var Finished = errors.New("ended")
+var ErrFinished = errors.New("ended")
 var invalidationDelay = 10 * time.Second // time we wait before invalidating a word checked, if no one confirms
 var quorum = .5
 
@@ -68,7 +68,7 @@ type Game struct {
 	whoHas      map[string][]string         // key:(real)word, value:nicknames of posessors
 	whoPressed  map[string][]string         // key:(real)word, value:nicknames of people who pressed
 }
-type presenceMap = map[string]bool
+
 type netMsg struct{ topic, content string }
 type validationLevel struct {
 	Validated     bool
@@ -189,7 +189,7 @@ func (g *Game) lifecycle() error {
 				log.Info().Msg("done colouring")
 			case gameEventEndRun:
 				log.Debug().Msg("byebye")
-				return Finished // an error here closes the context and ends the program
+				return ErrFinished // an error here closes the context and ends the program
 			case gameEventMsg:
 				if gui, ok := g.widget.(*GUI); ok {
 					gui.setFooter(ev.payload, ev.color)
@@ -210,7 +210,7 @@ func (g *Game) lifecycle() error {
 
 // react to an event for someone else pressing a word
 func (g *Game) otherPressed(ev gameEvent) {
-	realWord := strings.ReplaceAll(ev.word, "\n", " ")
+	realWord := MkRealWord(ev.word)
 	// register external press
 	if misc.Has(g.whoPressed[realWord], ev.sender) {
 		return // another press by the same player will not advance toward quorum
@@ -219,18 +219,18 @@ func (g *Game) otherPressed(ev gameEvent) {
 		g.whoPressed[realWord] = append(g.whoPressed[realWord], ev.sender)
 	}
 	g.ourWords[realWord].OthersPressed++
-	if float64(
-		g.ourWords[realWord].Self+
-			g.ourWords[realWord].OthersPressed) > float64(g.ourWords[realWord].total)*quorum {
-		// check validation if more than quorum
-		g.ourWords[realWord].Validated = true
-	}
+	g.maybeValidate(realWord)
 	log.Debug().Msg("press by other")
 	g.ColorWord(ev.word, g.ourWords[realWord])
 }
 
+// maybeValidate checks if a word is validated by us and/or the group
+func (g *Game) maybeValidate(realWord string) {
+	g.ourWords[realWord].Validated = float64(g.ourWords[realWord].Self+g.ourWords[realWord].OthersPressed) > float64(g.ourWords[realWord].total)*quorum
+}
+
 func (g *Game) invalidate(word string) {
-	realWord := strings.ReplaceAll(word, "\n", " ")
+	realWord := MkRealWord(word)
 	r := g.ourWords[realWord]
 	r.Self = 0
 	g.ColorWord(word, r)
@@ -250,7 +250,7 @@ func (g *Game) ColorWord(word string, vl *validationLevel) {
 
 // gameWordPressed is inviked when *we* press a word onscreen
 func (g *Game) gameWordPressed(word string) error {
-	realWord := strings.ReplaceAll(word, "\n", " ")
+	realWord := MkRealWord(word)
 	// register state
 	v, ok := g.ourWords[realWord]
 	if !ok {
@@ -270,14 +270,15 @@ func (g *Game) gameWordPressed(word string) error {
 		// communicate (beware:split lines in result of WordAt)
 		g.eg.Go(func() error { g.toNetwork <- netMsg{topic: pressedWordsTopic, content: realWord}; return nil })
 		g.eg.Go(func() error { return g.invalidateLater(realWord) })
-		// TODO validate also for sender when quorum is reached
+		// validate also for sender when quorum is reached
+		g.maybeValidate(realWord)
 	}
 	// show
 	g.ColorWord(word, v)
 	return nil
 }
 
-//invalidateLater unchecks a word after a while
+// invalidateLater unchecks a word after a while
 func (g *Game) invalidateLater(word string) error {
 	select {
 	case <-g.ctx.Done():
@@ -307,16 +308,11 @@ splashScreen:
 		}
 	}
 	g.eg.Go(g.footerTimeline)
-
-	// wait for end of run.
-	select {
-	case <-g.ctx.Done():
-		log.Debug().Err(g.ctx.Err()).Send()
-		return g.ctx.Err()
-	}
+	<-g.ctx.Done() // wait for the game's ErrGroup to return
+	return g.ctx.Err()
 }
 
-//footerTimeline ticks messages in the first seconds
+// footerTimeline ticks messages in the first seconds
 func (g *Game) footerTimeline() error {
 	type tickMsg struct {
 		durMillis int64

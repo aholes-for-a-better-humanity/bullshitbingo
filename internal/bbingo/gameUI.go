@@ -9,7 +9,6 @@ import (
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/ui"
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/ui/widgets"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/rs/zerolog/log"
 )
 
 func NewGUI(head, foot string) *GUI {
@@ -40,8 +39,7 @@ type GUI struct {
 	H, B, F *ui.GridUI // Header, Body, Footer
 	// header and footers are "one line"
 	// grid in the middle (Body) holds the terms
-	head, foot string
-	words      []string
+	words []string
 }
 
 func (gui *GUI) setHeader(s string, c color.RGBA) {
@@ -89,7 +87,6 @@ func (gui *GUI) WordAt(x, y int) string {
 
 // ColorWord colors the corresponding widget(s) with this colour
 func (gui *GUI) ColorWord(word string, vl *validationLevel) {
-	color := ui.Grey
 	// TODO VARY COLOR -- make a beautiful grid
 	// if self-touched, increase green
 	// if validated, set Blue
@@ -98,32 +95,17 @@ func (gui *GUI) ColorWord(word string, vl *validationLevel) {
 		if widg, ok := widg.(*widgets.Text); ok {
 			realMsg := MkRealWord(widg.Msg)
 			realWord := MkRealWord(word)
-			log := log.With().
-				Str("word", word).
-				Str("msg", widg.Msg).
-				Str("realW", realWord).
-				Str("realM", realMsg).
-				Interface("vl", vl).
-				Logger()
 			if !strings.EqualFold(realMsg, realWord) {
 				// log.Trace().Int("pos", pos).Msg("not this")
 				continue
 			}
-			log.Info().Msg("this")
-			color = ui.Greys[(pos/5)%(2)+1+(pos%5)%2+1]
+			color := ui.Greys[(pos/5)%(2)+1+(pos%5)%2+1]
 			switch {
 			case vl.Validated:
-				log.Debug().Msg("validated")
 				color = ui.BlueVal
 			case vl.Self != 0:
-				log.Debug().Msg("self")
 				color = ui.Green
 			default:
-				log.Debug().
-					Int("self", vl.Self).
-					Bool("val", vl.Validated).
-					Interface("vl", vl).
-					Send()
 			}
 			widg.Bckgrd = color
 			return
