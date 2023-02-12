@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"math/rand"
 	"strings"
-	"time"
 )
 
 //go:embed terms.txt
@@ -16,7 +15,6 @@ func init() {
 		rt := trysplit(strings.TrimSpace(t))
 		terms = append(terms, rt)
 	}
-	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(terms), func(i, j int) { terms[i], terms[j] = terms[j], terms[i] })
 	allTerms = ""
 }

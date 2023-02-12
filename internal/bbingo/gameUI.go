@@ -87,7 +87,7 @@ func (gui *GUI) WordAt(x, y int) string {
 
 // ColorWord colors the corresponding widget(s) with this colour
 func (gui *GUI) ColorWord(word string, vl *validationLevel) {
-	// TODO VARY COLOR -- make a beautiful grid
+	// make a beautiful grid
 	// if self-touched, increase green
 	// if validated, set Blue
 	// in any case, set a "nice" Grey

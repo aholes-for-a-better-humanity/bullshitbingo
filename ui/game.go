@@ -18,7 +18,6 @@ type GridUI struct {
 	ImW, ImH       int         // width and height of the layout
 	Orig           image.Point // origin of the grid (relative to screen)
 	sync.Mutex
-	o sync.Once
 }
 
 // https://pkg.go.dev/github.com/hajimehoshi/ebiten/v2@v2.2.2?utm_source=gopls#Game
@@ -58,9 +57,9 @@ func (ui *GridUI) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHe
 // numbers are laid out line by line, from left to right, lines laid out top to bottom.
 // A 4*3 grid would be numbered :
 //
-//  // 0  1  2  3
-//  // 4  5  6  7
-//  // 8  9 10 11
+//	// 0  1  2  3
+//	// 4  5  6  7
+//	// 8  9 10 11
 //
 // Warning, if you increase size of a cell, the next cell will have an offset, too
 func (ui *GridUI) CellAt(screen *ebiten.Image, i int) *ebiten.Image {
