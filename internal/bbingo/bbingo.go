@@ -18,7 +18,6 @@ import (
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/ui/widgets"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"github.com/pioz/faker"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )
@@ -90,7 +89,7 @@ func (g *Game) init() {
 	g.whoPressed = make(map[string][]string)
 	// ctx, _ := context.WithCancel(context.Background())
 	g.eg, g.ctx = errgroup.WithContext(context.Background())
-	g.nickname = strings.Join([]string{faker.Username(), faker.Username()}, " ")
+	g.nickname = strings.Join([]string{"A", "B"}, " ") // TODO randomize nickname /a la Faker/ (but cheap)
 	g.eg.Go(g.lifecycle)
 	// initial widget is the splash/welcome screen
 	bsbg := strings.Split("bull shit bin Go", " ")
