@@ -1,9 +1,7 @@
 package main
 
 import (
-	"math/rand"
 	"os"
-	"time"
 
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/internal/bbingo"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -17,11 +15,11 @@ func init() {
 		zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMicro
 		log.Logger = log.Output(consolelog)
 	}
-	rand.Seed(time.Now().UnixNano())
 }
 
 func init() {
 	ebiten.SetWindowResizable(true)
+	ebiten.SetWindowClosingHandled(true)
 }
 
 func main() {

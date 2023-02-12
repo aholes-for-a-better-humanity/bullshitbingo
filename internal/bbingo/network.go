@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aholes-for-a-better-humanity/bullshitbingo/internal/misc"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 )
@@ -33,6 +34,7 @@ const (
 	gamesDataStreamName   = "gamesData"   // data of games while they are running
 	pressedWordsTopic     = "pressed"
 	hasWordsTopic         = "have"
+	playerLeavingTopic    = "leaving"
 )
 
 // network provides communication capabilities for *Game
@@ -64,12 +66,19 @@ func (g *Game) network() error {
 		log.Error().Err(err).Send()
 		return err
 	}
-	g.beInAGame(jsc) // g.gameWeAreIn is now reliable.
+	err = g.beInAGame(jsc) // g.gameWeAreIn is now reliable.
 	if err != nil {
 		log.Error().Err(err).Send()
 		return err
 	}
+	defer func() {
+		// notify all players when leaving game (and adjust counts, quorum, etc.)
+		// relies on the game life cycle not being shorted by Ebiten (works on desktop)
+		sub := strings.Join([]string{"game", g.gameWeAreIn, playerLeavingTopic}, ".")
+		_, _ = jsc.Publish(sub, []byte(g.nickname+"|")) // we could not react to any error, the context being Done.
+	}()
 	return g.networkMainLoop(jsc)
+
 }
 
 func (*Game) ensureGameStreamExists(jsc nats.JetStreamManager) error {
@@ -134,14 +143,15 @@ func (g *Game) beInAGame(jsc nats.JetStreamContext) error {
 // networkMainLoop is the long-lived goroutine that subscribes and publishes all along the life of the program
 func (g *Game) networkMainLoop(jsc nats.JetStreamContext) error {
 	ch := make(chan *nats.Msg, 256)
+	unsub := func(s *nats.Subscription) { _ = s.Unsubscribe() }
 	if s, err := jsc.ChanSubscribe(strings.Join([]string{"game", g.gameWeAreIn}, "."), ch); err == nil {
-		defer s.Unsubscribe()
+		defer unsub(s)
 	} else {
 		log.Error().Err(err).Send()
 		return err
 	}
 	if s, err := jsc.ChanSubscribe(strings.Join([]string{"game", g.gameWeAreIn, ">"}, "."), ch); err == nil {
-		defer s.Unsubscribe()
+		defer unsub(s)
 	} else {
 		log.Error().Err(err).Send()
 		return err
@@ -163,9 +173,13 @@ func (g *Game) networkMainLoop(jsc nats.JetStreamContext) error {
 			return g.ctx.Err()
 		case nm := <-g.toNetwork:
 			sub := strings.Join([]string{"game", g.gameWeAreIn, nm.topic}, ".")
-			jsc.Publish(sub, []byte(g.nickname+"|"+nm.content))
+			if _, err := jsc.Publish(sub, []byte(g.nickname+"|"+nm.content)); err != nil {
+				return err
+			}
 		case msg := <-ch:
-			msg.Ack()
+			if err := msg.Ack(); err != nil {
+				return err
+			}
 			subjTokens := strings.Split(msg.Subject, ".")
 			topic := subjTokens[len(subjTokens)-1]
 			datacontent := strings.Split(string(msg.Data), "|")
@@ -201,6 +215,22 @@ func (g *Game) networkProcess(topic, sender, content string) {
 	case pressedWordsTopic:
 		if _, ok := g.ourWords[content]; ok {
 			g.events <- gameEvent{sig: gameWordPressedByOther, word: content, sender: sender}
+		}
+	case playerLeavingTopic:
+		log.Debug().Msg("player is leaving")
+		for ourRealWord, vl := range g.ourWords {
+			if misc.Has(g.whoPressed[ourRealWord], sender) {
+				g.whoPressed[ourRealWord] = misc.RemoveFrom(g.whoPressed[ourRealWord], sender)
+				g.ourWords[ourRealWord] = &validationLevel{
+					Validated:     false,
+					Self:          vl.Self,
+					total:         vl.total - 1,
+					OthersPressed: vl.OthersPressed - 1,
+				}
+				log.Debug().Msg("REVALIDATING")
+				g.maybeValidate(ourRealWord)
+				continue
+			}
 		}
 	default:
 		log.Error().Msg("missed")

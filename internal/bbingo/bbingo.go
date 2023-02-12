@@ -120,13 +120,13 @@ func (g *Game) Update() error {
 			}
 		}
 	}
-	select {
-	case <-g.ctx.Done():
-		log.Fatal().Caller().Err(g.ctx.Err()).Send()
-		return g.ctx.Err()
-	default:
-		return nil
+	if ebiten.IsWindowBeingClosed() {
+		g.events <- gameEvent{
+			sig: gameEventEndRun,
+		}
+		return nil // don't check the context right now, let the event cannel drain this signal instead
 	}
+	return g.ctx.Err()
 }
 
 // Draw draws the game screen.
@@ -164,7 +164,6 @@ func (g *Game) lifecycle() error {
 	for _, w := range gui.Words() {
 		g.ourWords[w] = &validationLevel{}
 	}
-	// TODO : notify all players when leaving game (and adjust counts, quorum, etc.)
 	g.eg.Go(g.timeline)
 	g.eg.Go(g.sigCatcher)
 	g.eg.Go(g.network)
@@ -248,16 +247,14 @@ func (g *Game) ColorWord(word string, vl *validationLevel) {
 }
 
 // gameWordPressed is inviked when *we* press a word onscreen
-func (g *Game) gameWordPressed(word string) error {
+func (g *Game) gameWordPressed(word string) {
 	realWord := MkRealWord(word)
 	// register state
 	v, ok := g.ourWords[realWord]
 	if !ok {
 		log.Warn().Str("rw", realWord).Msg("NOT OK")
-		return nil
 	}
 	g.ourWords[realWord] = v
-	// FIXME pointers or smth makes sharing the value NOK
 	log := log.With().Str(".", "(g *Game) gameWordPressed").Logger()
 	log.Debug().Interface("vl", g.ourWords[realWord]).Interface("v", v).Send()
 	if (g.ourWords[realWord].Self == 1) && (!g.ourWords[realWord].Validated) {
@@ -274,7 +271,6 @@ func (g *Game) gameWordPressed(word string) error {
 	}
 	// show
 	g.ColorWord(word, v)
-	return nil
 }
 
 // invalidateLater unchecks a word after a while
