@@ -253,6 +253,7 @@ func (g *Game) gameWordPressed(word string) {
 	v, ok := g.ourWords[realWord]
 	if !ok {
 		log.Warn().Str("rw", realWord).Msg("NOT OK")
+		return
 	}
 	g.ourWords[realWord] = v
 	log := log.With().Str(".", "(g *Game) gameWordPressed").Logger()
