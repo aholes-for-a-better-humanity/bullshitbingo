@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/internal/misc"
+	"github.com/aholes-for-a-better-humanity/bullshitbingo/names"
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/ui"
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/ui/widgets"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -89,7 +90,7 @@ func (g *Game) init() {
 	g.whoPressed = make(map[string][]string)
 	// ctx, _ := context.WithCancel(context.Background())
 	g.eg, g.ctx = errgroup.WithContext(context.Background())
-	g.nickname = strings.Join([]string{"A", "B"}, " ") // TODO randomize nickname /a la Faker/ (but cheap)
+	g.nickname = names.Pseudo()
 	g.eg.Go(g.lifecycle)
 	// initial widget is the splash/welcome screen
 	bsbg := strings.Split("bull shit bin Go", " ")
