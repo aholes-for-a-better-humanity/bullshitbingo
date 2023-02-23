@@ -72,9 +72,10 @@ var chansM sync.Mutex
 
 func ChanSubscribe(subject string, ch chan *nats.Msg) (*nats.Subscription, error) { // TODO
 	js.Global().Call("subscribe", subject, len(chans))
-	chansM.Lock()
 	c := make(chan msgData)
+	chansM.Lock()
 	chans = append(chans, c)
+	chansM.Unlock()
 	go func(c chan msgData) {
 		for m := range c {
 			ch <- &nats.Msg{Subject: m.Subject, Data: []byte(m.Data)} // FIXME you can't use NATS here... can you ?
