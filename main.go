@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"runtime"
 
 	"github.com/aholes-for-a-better-humanity/bullshitbingo/internal/bbingo"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -11,14 +12,14 @@ import (
 
 func init() {
 	{ // set up logging
-		consolelog := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05.000"}
+		consolelog := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05.000", NoColor: (runtime.GOOS == "js")}
 		zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMicro
 		log.Logger = log.Output(consolelog)
 	}
 }
 
 func init() {
-	ebiten.SetWindowResizable(true)
+	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetWindowClosingHandled(true)
 }
 

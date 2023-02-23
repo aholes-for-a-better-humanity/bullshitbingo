@@ -24,9 +24,9 @@ import (
 )
 
 var (
-	defaultNatsEndPoint       = "nats://127.0.0.1:4222" // demo.nats.io:4222 works just fine
-	gameOpeningPeriodDuration = 15 * time.Minute        // duration to accept players into a same game
-	gamePlayingPeriodDuration = 180 * time.Minute       // (expected) duration of a game after first player opened it
+	defaultNatsEndPoint       = "ws://127.0.0.1:8443" // demo.nats.io:4222 works just fine
+	gameOpeningPeriodDuration = 15 * time.Minute      // duration to accept players into a same game
+	gamePlayingPeriodDuration = 180 * time.Minute     // (expected) duration of a game after first player opened it
 )
 
 const (
@@ -39,20 +39,24 @@ const (
 
 // network provides communication capabilities for *Game
 func (g *Game) network() error {
-	var nc *nats.Conn
-	var err error
-
-	for {
+	var (
+		nc   *nats.Conn
+		err  error
+		errs = make(chan error)
+	)
+	go func() {
 		nc, err = nats.Connect(defaultNatsEndPoint)
+		errs <- err
+	}()
+	select {
+	case <-g.ctx.Done():
+		return g.ctx.Err()
+	case err := <-errs:
 		if err == nil {
 			defer nc.Close()
-			break
-		}
-		select {
-		case <-g.ctx.Done():
-			return g.ctx.Err()
-		default:
+		} else {
 			log.Error().Err(err).Msg("nats.Connect")
+			return err
 		}
 	}
 
